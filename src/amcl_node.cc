@@ -857,12 +857,9 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     m_previous_laser_time_ = m_current_laser_time_;
 
     // See if we should update the filter
-    bool update = fabs(delta.v[0]) > d_thresh_ ||
-                  fabs(delta.v[1]) > d_thresh_ ||
-                  fabs(delta.v[2]) > a_thresh_ ||
-                  m_delta_time_ >= 0.2;
+    bool update = m_delta_time_ >= 0.125;
 
-    if (m_delta_time_ >= 0.2)
+    if (m_delta_time_ >= 0.125)
     {
     	m_delta_time_ = 0.0;
     }
@@ -1066,10 +1063,10 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
       resampled = true;
     }
 
-
     /*****************************************************
      * Publish AMCL particles
      *****************************************************/
+#ifdef KERNEL
     pf_sample_set_t* set = pf_->sets;
     if (!m_force_update)
     {
@@ -1081,11 +1078,12 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
       {
         tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(set->samples[i].pose.v[2]),
                                  tf::Vector3(set->samples[i].pose.v[0],
-                                           set->samples[i].pose.v[1], 0)),
+                                             set->samples[i].pose.v[1], 0)),
                         cloud_msg.poses[i]);
       }
       particlecloud_pub_.publish(cloud_msg);
     } // End of particles publish
+#endif
   }
 
   if(resampled || force_publication)

@@ -181,9 +181,9 @@ void pf_init_2(pf_t *pf, double x, double y, double t)
   pf_kdtree_clear(set->kdtree);
 
   double llsamplerange  = 0.1;
-  double llsamplestep   = 0.02;
-  double lasamplerange  = 0.5;
-  double lasamplestep   = 0.1;
+  double llsamplestep   = 0.05;
+  double lasamplerange  = 0.08;
+  double lasamplestep   = 0.02;
 
   double xx;
   double yy;
