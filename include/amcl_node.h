@@ -71,7 +71,7 @@ class AmclNode
     /**
      * @brief Uses TF and LaserScan messages from bag file to drive AMCL instead
      */
-    void runFromBag(const std::string &in_bag_fn);
+//    void runFromBag(const std::string &in_bag_fn);
 
     int process();
     void savePoseToServer();

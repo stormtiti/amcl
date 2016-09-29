@@ -26,11 +26,6 @@
 #include <signal.h>
 #include <ros/ros.h>
 
-#define NEW_UNIFORM_SAMPLING 1
-
-using namespace amcl;
-
-#define USAGE "USAGE: amcl"
 boost::shared_ptr<AmclNode> amcl_node_ptr;
 
 void sigintHandler(int sig)
@@ -40,8 +35,7 @@ void sigintHandler(int sig)
   ros::shutdown();
 }
 
-int
-main(int argc, char** argv)
+int main(int argc, char** argv)
 {
   ros::init(argc, argv, "amcl");
   ros::NodeHandle nh;
@@ -52,15 +46,8 @@ main(int argc, char** argv)
   // Make our node available to sigintHandler
   amcl_node_ptr.reset(new AmclNode());
 
-  if (argc == 1)
-  {
-    // run using ROS input
-    ros::spin();
-  }
-  else if ((argc == 3) && (std::string(argv[1]) == "--run-from-bag"))
-  {
-    amcl_node_ptr->runFromBag(argv[2]);
-  }
+  // run using ROS input
+  ros::spin();
 
   // Without this, our boost locks are not shut down nicely
   amcl_node_ptr.reset();
