@@ -47,6 +47,27 @@
 
 static const std::string scan_topic_ = "scan";
 
+
+static double normalize(double z)
+{
+  return atan2(sin(z),cos(z));
+}
+
+static double angle_diff(double a, double b)
+{
+  double d1, d2;
+  a = normalize(a);
+  b = normalize(b);
+  d1 = a-b;
+  d2 = 2*M_PI - fabs(d1);
+  if(d1 > 0)
+    d2 *= -1.0;
+  if(fabs(d1) < fabs(d2))
+    return(d1);
+  else
+    return(d2);
+}
+
 AmclNode::AmclNode() :
         sent_first_transform_(false),
         latest_tf_valid_(false),
@@ -147,8 +168,8 @@ AmclNode::AmclNode() :
   // plicp
   m_plicp_min_reading_ = 0.1;
   m_plicp_max_reading_ = 9.9;
-  m_plicp_angular_correction_ = 10.0;
-  m_plicp_linear_correction_  = 0.15;
+  m_plicp_angular_correction_ = 30.0;
+  m_plicp_linear_correction_  = 0.2;
   plicpInit(m_plicp_min_reading_, m_plicp_max_reading_,
 		    m_plicp_angular_correction_, m_plicp_linear_correction_);
   /*******************************************/
@@ -768,10 +789,6 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     return;
   }
 
-  /** plicp */
-//  LDP curr_ldp_scan;
-//  laserScanToLDP(*laser_scan, curr_ldp_scan);
-
   boost::recursive_mutex::scoped_lock lr(configuration_mutex_);
   int laser_index = -1;
 
@@ -832,63 +849,9 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
   if(pf_init_)
   {
     // Compute change in pose
-    // delta = pf_vector_coord_sub(pose, pf_odom_pose_);
-
-//	delta.v[0] = pose.v[0] - pf_odom_pose_.v[0];
-//	delta.v[1] = pose.v[1] - pf_odom_pose_.v[1];
-//	delta.v[2] = angle_diff(pose.v[2], pf_odom_pose_.v[2]);
-//
-//	double x_ = delta.v[0];
-//	double y_ = delta.v[1];
-//	double t_ = delta.v[2];
-//    /************************************************
-//	 * CSM PL-ICP Matching
-//	 ************************************************/
-//
-//	ros::WallTime start = ros::WallTime::now();
-//
-//	// CSM is used in the following way:
-//	// The scans are always in the laser frame
-//	// The reference scan (prevLDPcan_) has a pose of [0, 0, 0]
-//	// The new scan (currLDPScan) has a pose equal to the movement
-//	// of the laser in the laser frame since the last scan
-//	// The computed correction is then propagated using the tf machinery
-//	m_previous_ldp_scan_->odometry[0] = 0.0;
-//	m_previous_ldp_scan_->odometry[1] = 0.0;
-//	m_previous_ldp_scan_->odometry[2] = 0.0;
-//
-//	m_previous_ldp_scan_->estimate[0] = 0.0;
-//	m_previous_ldp_scan_->estimate[1] = 0.0;
-//	m_previous_ldp_scan_->estimate[2] = 0.0;
-//
-//	m_previous_ldp_scan_->true_pose[0] = 0.0;
-//	m_previous_ldp_scan_->true_pose[1] = 0.0;
-//	m_previous_ldp_scan_->true_pose[2] = 0.0;
-//
-//	m_input_.laser_ref  = m_previous_ldp_scan_;
-//	m_input_.laser_sens = curr_ldp_scan;
-//
-//	m_input_.first_guess[0] = delta.v[0];
-//	m_input_.first_guess[1] = delta.v[1];
-//	m_input_.first_guess[2] = delta.v[2];
-//
-//	sm_icp(&m_input_, &m_output_);
-//
-//	if (m_output_.valid) // csm valid
-//	{
-//		delta.v[0] = m_output_.x[0];
-//		delta.v[1] = m_output_.x[1];
-//		delta.v[2] = m_output_.x[2];
-////		pose.v[0] = delta.v[0] + pf_odom_pose_.v[0];
-////		pose.v[1] = delta.v[1] + pf_odom_pose_.v[1];
-////		pose.v[2] = atan2(sin(delta.v[2] + pf_odom_pose_.v[2]), cos(delta.v[2] + pf_odom_pose_.v[2]));
-//	}
-//
-//    double duration = (ros::WallTime::now() - start).toSec() * 1e3;
-//    ROS_INFO("[AMCL] dur: %.1f ms, new(%.3f, %.3f, %.3f), old(%.3f, %.3f, %.3f)",
-//    		duration, delta.v[0], delta.v[1], delta.v[2], x_, y_, t_);
-
-	/*******************************************************/
+	delta.v[0] = pose.v[0] - pf_odom_pose_.v[0];
+	delta.v[1] = pose.v[1] - pf_odom_pose_.v[1];
+	delta.v[2] = angle_diff(pose.v[2], pf_odom_pose_.v[2]);
 
     m_delta_time_ += (m_current_laser_time_ - m_previous_laser_time_);
     m_previous_laser_time_ = m_current_laser_time_;
@@ -911,75 +874,83 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     if(update)
     {
 
-//    	double x_ = delta.v[0];
-//    	double y_ = delta.v[1];
-//    	double t_ = delta.v[2];
-//        /************************************************
-//    	 * CSM PL-ICP Matching
-//    	 ************************************************/
-//
-//    	ros::WallTime start = ros::WallTime::now();
-//
-//    	// CSM is used in the following way:
-//    	// The scans are always in the laser frame
-//    	// The reference scan (prevLDPcan_) has a pose of [0, 0, 0]
-//    	// The new scan (currLDPScan) has a pose equal to the movement
-//    	// of the laser in the laser frame since the last scan
-//    	// The computed correction is then propagated using the tf machinery
-//    	m_previous_ldp_scan_->odometry[0] = 0.0;
-//    	m_previous_ldp_scan_->odometry[1] = 0.0;
-//    	m_previous_ldp_scan_->odometry[2] = 0.0;
-//
-//    	m_previous_ldp_scan_->estimate[0] = 0.0;
-//    	m_previous_ldp_scan_->estimate[1] = 0.0;
-//    	m_previous_ldp_scan_->estimate[2] = 0.0;
-//
-//    	m_previous_ldp_scan_->true_pose[0] = 0.0;
-//    	m_previous_ldp_scan_->true_pose[1] = 0.0;
-//    	m_previous_ldp_scan_->true_pose[2] = 0.0;
-//
-//    	m_input_.laser_ref  = m_previous_ldp_scan_;
-//    	m_input_.laser_sens = curr_ldp_scan;
-//
-//    	m_input_.first_guess[0] = delta.v[0];
-//    	m_input_.first_guess[1] = delta.v[1];
-//    	m_input_.first_guess[2] = delta.v[2];
-//
-//    	sm_icp(&m_input_, &m_output_);
-//
-//    	if (m_output_.valid) // csm valid
-//    	{
-//    		delta.v[0] = m_output_.x[0];
-//    		delta.v[1] = m_output_.x[1];
-//    		delta.v[2] = m_output_.x[2];
-//    	}
-//
-//        double duration = (ros::WallTime::now() - start).toSec() * 1e3;
-//        ROS_INFO("[AMCL] dur: %.1f ms, new (%.3f, %.3f, %.3f), old (%.3f, %.3f, %.3f)",
-//        		duration, delta.v[0], delta.v[1], delta.v[2], x_, y_, t_);
-//
+#ifdef CSM
+        /** plicp */
+    	LDP curr_ldp_scan;
+    	laserScanToLDP(*laser_scan, curr_ldp_scan);
+
+    	double x_ = delta.v[0];
+    	double y_ = delta.v[1];
+    	double t_ = delta.v[2];
+        /************************************************
+    	 * CSM PL-ICP Matching
+    	 ************************************************/
+
+    	ros::WallTime start = ros::WallTime::now();
+
+    	// CSM is used in the following way:
+    	// The scans are always in the laser frame
+    	// The reference scan (prevLDPcan_) has a pose of [0, 0, 0]
+    	// The new scan (currLDPScan) has a pose equal to the movement
+    	// of the laser in the laser frame since the last scan
+    	// The computed correction is then propagated using the tf machinery
+    	m_previous_ldp_scan_->odometry[0] = 0.0;
+    	m_previous_ldp_scan_->odometry[1] = 0.0;
+    	m_previous_ldp_scan_->odometry[2] = 0.0;
+
+    	m_previous_ldp_scan_->estimate[0] = 0.0;
+    	m_previous_ldp_scan_->estimate[1] = 0.0;
+    	m_previous_ldp_scan_->estimate[2] = 0.0;
+
+    	m_previous_ldp_scan_->true_pose[0] = 0.0;
+    	m_previous_ldp_scan_->true_pose[1] = 0.0;
+    	m_previous_ldp_scan_->true_pose[2] = 0.0;
+
+    	m_input_.laser_ref  = m_previous_ldp_scan_;
+    	m_input_.laser_sens = curr_ldp_scan;
+
+    	m_input_.first_guess[0] = delta.v[0];
+    	m_input_.first_guess[1] = delta.v[1];
+    	m_input_.first_guess[2] = delta.v[2];
+
+    	sm_icp(&m_input_, &m_output_);
+
+    	if (m_output_.valid) // csm valid
+    	{
+    		delta.v[0] = m_output_.x[0];
+    		delta.v[1] = m_output_.x[1];
+    		delta.v[2] = m_output_.x[2];
+    	}
+
+        double duration = (ros::WallTime::now() - start).toSec() * 1e3;
+        ROS_INFO("[AMCL] dur: %.1f ms, new (%.3f, %.3f, %.3f), old (%.3f, %.3f, %.3f)",
+        		duration, delta.v[0], delta.v[1], delta.v[2], x_, y_, t_);
+#endif
+
     	/*******************************************************/
 
       for(unsigned int i=0; i < lasers_update_.size(); i++)
         lasers_update_[i] = true;
 
+#ifdef CSM
       // free previous ldp scan
-//      ld_free(m_previous_ldp_scan_);
-//      // assignment
-//      m_previous_ldp_scan_ = curr_ldp_scan;
+      ld_free(m_previous_ldp_scan_);
+      // assignment
+      m_previous_ldp_scan_ = curr_ldp_scan;
+#endif
     }
-//    else
-//    {
-//      // free current ldp scan
-//      ld_free(curr_ldp_scan);
-//    }
   }
 
   bool force_publication = false;
   if(!pf_init_)
   {
 	m_previous_laser_time_ = m_current_laser_time_;
-//	m_previous_ldp_scan_ = curr_ldp_scan;
+
+#ifdef CSM
+	if (m_previous_ldp_scan_)
+	      ld_free(m_previous_ldp_scan_);
+	laserScanToLDP(*laser_scan, m_previous_ldp_scan_);
+#endif
 
     // Pose at last filter update
     pf_odom_pose_ = pose;
@@ -1134,31 +1105,6 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     }
 
     m_last_index_ = best_index;
-
-//    ROS_INFO("AMCL score[%d] = %f (%.3f, %.3f, %.3f)", best_index, pf_->sets->samples[best_index].score,
-//    		                                           pf_->sets->samples[best_index].pose.v[0],
-//    		                                           pf_->sets->samples[best_index].pose.v[1],
-//    		                                           pf_->sets->samples[best_index].pose.v[2]);
-//
-//    int total_beams = pf_->sets->samples[best_index].phit_zero_beams_
-//    		  + pf_->sets->samples[best_index].phit_no_zero_beams_
-//    		  + pf_->sets->samples[best_index].max_beams_
-//    		  + pf_->sets->samples[best_index].min_beams_
-//    		  + pf_->sets->samples[best_index].nan_beams_
-//    	      + pf_->sets->samples[best_index].unknow_beams_
-//    	      + pf_->sets->samples[best_index].outlier_beams_
-//    		  + pf_->sets->samples[best_index].free_beams_;
-//
-//    ROS_INFO("AMCL phit_zero: %d, phit: %d, max: %d, min: %d, nan: %d, unknown: %d, outlier: %d, free: %d, total: %d",
-//											pf_->sets->samples[best_index].phit_zero_beams_,
-//											pf_->sets->samples[best_index].phit_no_zero_beams_,
-//											pf_->sets->samples[best_index].max_beams_,
-//											pf_->sets->samples[best_index].min_beams_,
-//											pf_->sets->samples[best_index].nan_beams_,
-//											pf_->sets->samples[best_index].unknow_beams_,
-//											pf_->sets->samples[best_index].outlier_beams_,
-//											pf_->sets->samples[best_index].free_beams_,
-//											total_beams);
 
       geometry_msgs::PoseWithCovarianceStamped p;
       // Fill in the header

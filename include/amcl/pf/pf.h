@@ -64,16 +64,6 @@ typedef struct
   // Weight for this pose
   double weight;
   double score;
-
-  int phit_no_zero_beams_;
-  int phit_zero_beams_;
-  int unknow_beams_;
-  int outlier_beams_;
-  int free_beams_;
-  int min_beams_;
-  int max_beams_;
-  int nan_beams_;
-  
 } pf_sample_t;
 
 

@@ -233,44 +233,15 @@ double AMCLLaser::LikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* set
 
     // Take account of the laser pose relative to the robot
     pose = pf_vector_coord_add(self->laser_pose, pose);
-
     double score = 0;
-
-	sample->outlier_beams_ = 0;
-	sample->phit_zero_beams_ = 0;
-	sample->phit_no_zero_beams_ = 0;
-	sample->free_beams_ = 0;
-	sample->unknow_beams_ = 0;
-    sample->min_beams_ = 0;
-    sample->max_beams_ = 0;
-    sample->nan_beams_ = 0;
-
     for (i = 0; i < data->range_count; i++)
     {
       obs_range = data->ranges[i][0];
       obs_bearing = data->ranges[i][1];
 
       // This model ignores max range readings, Check for NaN
-//      if(obs_range >= data->range_max || obs_range <= 0.05 || isnan(obs_range)) {
-//        continue;
-//      }
-
-      if(obs_range >= data->range_max)
-      {
-          sample->max_beams_ ++;
-          continue;
-      }
-
-      if (obs_range <= 0.05)
-      {
-    	  sample->min_beams_ ++;
-    	  continue;
-      }
-
-      if (isnan(obs_range))
-      {
-    	  sample->nan_beams_ ++;
-    	  continue;
+      if(obs_range >= data->range_max || obs_range <= 0.05 || isnan(obs_range)) {
+        continue;
       }
 
       // Compute the endpoint of the beam
@@ -286,33 +257,11 @@ double AMCLLaser::LikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* set
       // Off-map penalized as max distance
       if(!MAP_VALID(self->map, mi, mj))
       {
-    	  score += 10.0; // out of boundary penality
-    	  sample->outlier_beams_ ++;
+    	  score += 2.5; // out of boundary penality
       }
       else
       {
-    	  double local_occ_dist = self->map->cells[MAP_INDEX(self->map,mi,mj)].occ_dist;
-
-    	  if (local_occ_dist == 0.0)
-    	  {
-    		  sample->phit_zero_beams_ ++;
-    	  }
-    	  else if (local_occ_dist < 2.5)
-    	  {
-    		  sample->phit_no_zero_beams_ ++;
-    		  if (obs_range >= 7.0 && local_occ_dist < 0.1)
-    			  local_occ_dist = 0.0;
-    	  }
-    	  else if (local_occ_dist == 2.5)
-    	  {
-    		  sample->free_beams_ ++;
-    	  }
-//    	  else if (local_occ_dist == 5.0)
-//    	  {
-//    		  sample->unknow_beams_ ++;
-//    	  }
-
-    	  score += local_occ_dist;
+    	  score += self->map->cells[MAP_INDEX(self->map,mi,mj)].occ_dist;
       }
     } // End of laser
 

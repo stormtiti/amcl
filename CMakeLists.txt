@@ -23,7 +23,6 @@ catkin_package (
     roscpp
     tf
   INCLUDE_DIRS include
-  LIBRARIES amcl_sensors amcl_map amcl_pf
 )
 
 include_directories (
@@ -42,45 +41,33 @@ include_directories (
 
 link_directories(${csm_LIBRARY_DIRS})
 
-add_library(amcl_pf
-                    src/amcl/pf/pf.c
-                    src/amcl/pf/pf_kdtree.c
-                    src/amcl/pf/pf_pdf.c
-                    src/amcl/pf/pf_vector.c
-                    src/amcl/pf/eig3.c
-                    src/amcl/pf/pf_draw.c)
-
-add_library(amcl_map
-                    src/amcl/map/map.c
-                    src/amcl/map/map_cspace.cpp
-                    src/amcl/map/map_range.c
-                    src/amcl/map/map_store.c
-                    src/amcl/map/map_draw.c)
-
-add_library(amcl_sensors
-                    src/amcl/sensors/amcl_sensor.cpp
-                    src/amcl/sensors/amcl_odom.cpp
-                    src/amcl/sensors/amcl_laser.cpp
-                    src/amcl_node.cc
+add_executable(amcl
+  src/amcl/pf/pf.c
+  src/amcl/pf/pf_kdtree.c
+  src/amcl/pf/pf_pdf.c
+  src/amcl/pf/pf_vector.c
+  src/amcl/pf/eig3.c
+  src/amcl/pf/pf_draw.c
+  src/amcl/map/map.c
+  src/amcl/map/map_cspace.cpp
+  src/amcl/map/map_range.c
+  src/amcl/map/map_store.c
+  src/amcl/map/map_draw.c
+  src/amcl/sensors/amcl_sensor.cpp
+  src/amcl/sensors/amcl_odom.cpp
+  src/amcl/sensors/amcl_laser.cpp
+  src/amcl_node.cc
+  src/main.cc
 )
                     
-target_link_libraries(amcl_sensors 
-  amcl_map 
-  amcl_pf
-  ${Boost_LIBRARIES}
+target_link_libraries(amcl
   ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
   ${csm_LIBRARIES}
 )
 
-add_executable(amcl src/main.cc)
-target_link_libraries(amcl
-  amcl_sensors
-  ${catkin_LIBRARIES}
-)
-
-install( TARGETS
-    amcl amcl_sensors amcl_map amcl_pf
-    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+install( TARGETS amcl
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
